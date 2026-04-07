@@ -1,22 +1,24 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API specification for Showtime
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: shows
+    description: Show operations
+  - name: genres
+    description: Genre operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +26,182 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /shows:
+    get:
+      operationId: listShows
+      tags: [shows]
+      summary: List all shows
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [movie, anime, tv]
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of shows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShowListResponse"
+    post:
+      operationId: createShow
+      tags: [shows]
+      summary: Create a show
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShowBody"
+      responses:
+        "201":
+          description: Created show
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Show"
+
+  /shows/{id}:
+    get:
+      operationId: getShow
+      tags: [shows]
+      summary: Get a show by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Show detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Show"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateShow
+      tags: [shows]
+      summary: Update a show
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShowBody"
+      responses:
+        "200":
+          description: Updated show
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Show"
+    delete:
+      operationId: deleteShow
+      tags: [shows]
+      summary: Delete a show
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /shows/featured:
+    get:
+      operationId: getFeaturedShows
+      tags: [shows]
+      summary: Get featured/spotlight shows
+      responses:
+        "200":
+          description: Featured shows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Show"
+
+  /shows/trending:
+    get:
+      operationId: getTrendingShows
+      tags: [shows]
+      summary: Get trending shows
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Trending shows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Show"
+
+  /shows/stats:
+    get:
+      operationId: getShowStats
+      tags: [shows]
+      summary: Get show catalog stats
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShowStats"
+
+  /genres:
+    get:
+      operationId: listGenres
+      tags: [genres]
+      summary: List all genres
+      responses:
+        "200":
+          description: List of genres
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Genre"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +212,195 @@ components:
       required:
         - status
 
+    Show:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+          enum: [movie, anime, tv]
+        description:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        year:
+          type: integer
+        rating:
+          type: number
+        posterUrl:
+          type: string
+        backdropUrl:
+          type: string
+        episodes:
+          type: integer
+          nullable: true
+        duration:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [ongoing, completed, upcoming]
+        trending:
+          type: boolean
+        featured:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - type
+        - description
+        - genres
+        - year
+        - rating
+        - posterUrl
+        - backdropUrl
+        - status
+        - trending
+        - featured
+        - createdAt
+
+    ShowListResponse:
+      type: object
+      properties:
+        shows:
+          type: array
+          items:
+            $ref: "#/components/schemas/Show"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - shows
+        - total
+        - page
+        - limit
+
+    CreateShowBody:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum: [movie, anime, tv]
+        description:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        year:
+          type: integer
+        rating:
+          type: number
+        posterUrl:
+          type: string
+        backdropUrl:
+          type: string
+        episodes:
+          type: integer
+          nullable: true
+        duration:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [ongoing, completed, upcoming]
+        trending:
+          type: boolean
+        featured:
+          type: boolean
+      required:
+        - title
+        - type
+        - description
+        - genres
+        - year
+        - rating
+        - posterUrl
+        - backdropUrl
+        - status
+
+    UpdateShowBody:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum: [movie, anime, tv]
+        description:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        year:
+          type: integer
+        rating:
+          type: number
+        posterUrl:
+          type: string
+        backdropUrl:
+          type: string
+        episodes:
+          type: integer
+          nullable: true
+        duration:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [ongoing, completed, upcoming]
+        trending:
+          type: boolean
+        featured:
+          type: boolean
+
+    ShowStats:
+      type: object
+      properties:
+        totalShows:
+          type: integer
+        totalMovies:
+          type: integer
+        totalAnime:
+          type: integer
+        totalTv:
+          type: integer
+        avgRating:
+          type: number
+        totalGenres:
+          type: integer
+      required:
+        - totalShows
+        - totalMovies
+        - totalAnime
+        - totalTv
+        - avgRating
+        - totalGenres
+
+    Genre:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        showCount:
+          type: integer
+      required:
+        - id
+        - name
+        - showCount
