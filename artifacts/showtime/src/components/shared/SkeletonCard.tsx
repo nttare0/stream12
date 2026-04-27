@@ -12,16 +12,22 @@ export function SkeletonCard() {
 
 export function SkeletonHero() {
   return (
-    <div className="w-full h-[80vh] bg-[#0f0f1a] relative overflow-hidden">
+    <div className="absolute inset-0 bg-[#0f0f1a] overflow-hidden">
       <div className="absolute inset-0 shimmer opacity-50" />
-      <div className="absolute bottom-0 left-0 right-0 p-12 space-y-4">
-        <div className="h-4 bg-white/10 rounded w-24" />
-        <div className="h-12 bg-white/10 rounded w-1/2" />
-        <div className="h-4 bg-white/10 rounded w-2/3" />
-        <div className="h-4 bg-white/10 rounded w-1/2" />
-        <div className="flex gap-4 pt-4">
-          <div className="h-12 bg-white/10 rounded-lg w-36" />
-          <div className="h-12 bg-white/10 rounded-lg w-36" />
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center pt-16">
+        <div className="max-w-2xl space-y-4">
+          <div className="flex gap-2">
+            <div className="h-6 bg-white/10 rounded w-16" />
+            <div className="h-6 bg-white/10 rounded w-20" />
+            <div className="h-6 bg-white/10 rounded w-14" />
+          </div>
+          <div className="h-14 bg-white/10 rounded w-3/4" />
+          <div className="h-4 bg-white/10 rounded w-2/3" />
+          <div className="h-4 bg-white/10 rounded w-1/2" />
+          <div className="flex gap-3 pt-3">
+            <div className="h-12 bg-white/10 rounded-lg w-36" />
+            <div className="h-12 bg-white/10 rounded-lg w-32" />
+          </div>
         </div>
       </div>
     </div>
