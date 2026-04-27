@@ -34,5 +34,6 @@ Movie, anime, and TV show discovery web app.
 - **Pages**: Home (featured hero, trending, category rows), Browse (search/filter), Show Detail, Admin dashboard
 - **Backend**: `artifacts/api-server/src/routes/shows.ts` + `genres.ts`
 - **DB Schema**: `lib/db/src/schema/shows.ts` — `showsTable` with `show_type` and `show_status` enums
-- **Seed**: 15 shows seeded via `pnpm --filter @workspace/api-server run seed`
+- **Seed**: 25 shows fetched from real OMDB API (`OMDB_API_KEY` env var) via `pnpm --filter @workspace/api-server run seed`. Use `-- --force` to re-seed.
+- **OMDB Service**: `artifacts/api-server/src/services/omdb.ts` — fetch by IMDb ID/title, search, and map to our schema. Anime is auto-detected via known IMDb IDs or Japanese animation country/genre.
 - **API Hooks**: Generated from OpenAPI in `lib/api-client-react/src/generated/api.ts`
