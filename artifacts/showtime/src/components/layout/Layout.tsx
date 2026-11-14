@@ -1,15 +1,44 @@
 import { Navbar } from "./Navbar";
 import { Link } from "wouter";
-import { Play, Film, Tv, Zap, Layers } from "lucide-react";
+import { Film, Tv, Zap, Layers, TriangleAlert } from "lucide-react";
+import { useEffect, useState } from "react";
+import { SOURCE_ERROR_EVENT } from "@/data/local-api";
 
 interface LayoutProps {
   children: React.ReactNode;
+}
+
+/** Shown when IMDb data could not be loaded — there is no local copy to fall back on. */
+function SourceNotice() {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const onError = () => setFailed(true);
+    window.addEventListener(SOURCE_ERROR_EVENT, onError);
+    return () => window.removeEventListener(SOURCE_ERROR_EVENT, onError);
+  }, []);
+
+  if (!failed) return null;
+
+  return (
+    <div
+      role="alert"
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md flex items-start gap-3 rounded-xl border border-amber-500/30 bg-[#1a1408]/95 backdrop-blur px-4 py-3 text-sm text-amber-100 shadow-xl"
+    >
+      <TriangleAlert className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-400" />
+      <p>
+        Titles could not be loaded from IMDb right now. The free daily request limit may have been
+        reached — please try again later.
+      </p>
+    </div>
+  );
 }
 
 export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-[100dvh] bg-[#0a0a0f] text-foreground flex flex-col font-sans">
       <Navbar />
+      <SourceNotice />
       <main className="flex-1 flex flex-col">
         {children}
       </main>
@@ -46,16 +75,6 @@ export function Layout({ children }: LayoutProps) {
                   ].map(({ href, label, icon: Icon }) => (
                     <Link key={href} href={href} className="flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors">
                       <Icon className="w-3.5 h-3.5" /> {label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-3">Genres</h4>
-                <div className="flex flex-col gap-2">
-                  {["Action", "Drama", "Sci-Fi", "Fantasy", "Thriller"].map((g) => (
-                    <Link key={g} href={`/shows?genre=${encodeURIComponent(g)}`} className="text-sm text-white/50 hover:text-white transition-colors">
-                      {g}
                     </Link>
                   ))}
                 </div>
