@@ -277,6 +277,9 @@ interface FeedSpec {
 
 const feeds = new Map<string, Feed>();
 
+/** Searches issued together per round; their results are interleaved. */
+const FEED_BATCH = 3;
+
 function recentYears(count: number): number[] {
   const thisYear = new Date().getFullYear();
   return Array.from({ length: count }, (_, i) => thisYear - i);
@@ -307,16 +310,24 @@ async function loadFeed(spec: FeedSpec, wanted: number): Promise<Feed> {
   // Chain onto the feed's queue so concurrent callers never repeat a request.
   const run = target.queue.then(async () => {
     while (target.shows.length < wanted && target.next < target.steps.length) {
-      const step = target.steps[target.next];
-      const { items } = await searchPage(step.term, step.page, spec.type, step.year);
-      target.next++;
+      // Take a few search words at once and deal their results out in turn,
+      // so a row is not ten titles that all share one word.
+      const batch = target.steps.slice(target.next, target.next + FEED_BATCH);
+      const results = await Promise.all(
+        batch.map((step) => searchPage(step.term, step.page, spec.type, step.year)),
+      );
+      target.next += batch.length;
 
-      for (const item of items) {
-        if (!hasPoster(item)) continue;
-        const show = toShow(item, spec.overrides);
-        if (!show || target.seen.has(show.id)) continue;
-        target.seen.add(show.id);
-        target.shows.push(show);
+      const longest = Math.max(...results.map((r) => r.items.length));
+      for (let i = 0; i < longest; i++) {
+        for (const { items } of results) {
+          const item = items[i];
+          if (!item || !hasPoster(item)) continue;
+          const show = toShow(item, spec.overrides);
+          if (!show || target.seen.has(show.id)) continue;
+          target.seen.add(show.id);
+          target.shows.push(show);
+        }
       }
     }
   });
