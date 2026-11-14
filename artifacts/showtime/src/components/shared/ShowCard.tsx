@@ -58,10 +58,12 @@ export function ShowCard({ show, className }: ShowCardProps) {
       </div>
 
       {/* Rating top-right */}
-      <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[11px] font-semibold">
-        <Star className="w-3 h-3 fill-[#f5c518] text-[#f5c518]" />
-        <span className="text-white">{show.rating.toFixed(1)}</span>
-      </div>
+      {show.rating > 0 && (
+        <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[11px] font-semibold">
+          <Star className="w-3 h-3 fill-[#f5c518] text-[#f5c518]" />
+          <span className="text-white">{show.rating.toFixed(1)}</span>
+        </div>
+      )}
 
       {/* Play button center (on hover) */}
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">

@@ -6,7 +6,6 @@ import NotFound from "@/pages/not-found";
 import { Home } from "@/pages/Home";
 import { Browse } from "@/pages/Browse";
 import { ShowDetail } from "@/pages/ShowDetail";
-import { Admin } from "@/pages/Admin";
 import { Watch } from "@/pages/Watch";
 
 const queryClient = new QueryClient({
@@ -25,7 +24,6 @@ function Router() {
       <Route path="/shows" component={Browse} />
       <Route path="/shows/:id" component={ShowDetail} />
       <Route path="/watch/:id" component={Watch} />
-      <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>
   );

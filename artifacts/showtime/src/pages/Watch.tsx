@@ -184,10 +184,12 @@ export function Watch() {
                             {s.title}
                           </p>
                           <div className="flex items-center gap-2 text-[11px] text-white/40">
-                            <span className="flex items-center gap-0.5 text-yellow-400">
-                              <Star className="w-3 h-3 fill-current" />
-                              {s.rating.toFixed(1)}
-                            </span>
+                            {s.rating > 0 && (
+                              <span className="flex items-center gap-0.5 text-yellow-400">
+                                <Star className="w-3 h-3 fill-current" />
+                                {s.rating.toFixed(1)}
+                              </span>
+                            )}
                             <span>{s.year}</span>
                             <span className="capitalize">{s.type}</span>
                           </div>
