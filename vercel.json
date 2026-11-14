@@ -2,7 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/((?!assets/|favicon\\.ico|robots\\.txt).*)",
+      "source": "/imdb/:path*",
+      "destination": "https://api.imdbapi.dev/:path*"
+    },
+    {
+      "source": "/((?!assets/|imdb/|favicon\\.ico|robots\\.txt).*)",
       "destination": "/index.html"
     }
   ]
