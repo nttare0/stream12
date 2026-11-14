@@ -1,11 +1,4 @@
-/**
- * Bundled fallback catalog.
- *
- * The app's data comes live from IMDb (see `imdb.ts`). This small snapshot
- * ships in the bundle only so the site still has something to show when the
- * IMDb API cannot be reached. It also defines the show shape the UI uses.
- */
-import raw from "./catalog.json";
+/** The show shape the UI works with. Every record comes from IMDb via `omdb.ts`. */
 
 export type ShowType = "movie" | "anime" | "tv";
 export type ShowStatus = "ongoing" | "completed" | "upcoming";
@@ -27,7 +20,3 @@ export interface CatalogShow {
   featured: boolean;
   createdAt: string;
 }
-
-export const shows: CatalogShow[] = raw.shows as CatalogShow[];
-
-export const genres: string[] = raw.genres as string[];

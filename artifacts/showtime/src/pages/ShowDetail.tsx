@@ -152,11 +152,9 @@ export function ShowDetail() {
 
             <div className="flex flex-wrap gap-1.5 mb-6">
               {show.genres.map((g) => (
-                <Link key={g} href={`/shows?genre=${encodeURIComponent(g)}`}>
-                  <span className="px-3 py-1 rounded-full text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 cursor-pointer transition-colors">
-                    {g}
-                  </span>
-                </Link>
+                <span key={g} className="px-3 py-1 rounded-full text-xs bg-white/5 border border-white/10 text-white/70">
+                  {g}
+                </span>
               ))}
             </div>
 
@@ -260,10 +258,12 @@ export function ShowDetail() {
                             {s.title}
                           </p>
                           <div className="flex items-center gap-2 text-[10px] text-white/40">
-                            <span className="flex items-center gap-0.5">
-                              <Star className="w-2.5 h-2.5 fill-[#f5c518] text-[#f5c518]" />
-                              {s.rating.toFixed(1)}
-                            </span>
+                            {s.rating > 0 && (
+                              <span className="flex items-center gap-0.5">
+                                <Star className="w-2.5 h-2.5 fill-[#f5c518] text-[#f5c518]" />
+                                {s.rating.toFixed(1)}
+                              </span>
+                            )}
                             <span>{s.year}</span>
                           </div>
                         </div>
