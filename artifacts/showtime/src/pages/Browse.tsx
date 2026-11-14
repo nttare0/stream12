@@ -87,7 +87,11 @@ export function Browse() {
             {qParam ? `Results for "${qParam}"` : "Browse Shows"}
           </h1>
           <p className="text-white/40 text-sm">
-            {showsData ? `${showsData.total.toLocaleString()} titles found` : "Discovering..."}
+            {!showsData
+              ? "Discovering..."
+              : qParam || genreParam
+                ? `${showsData.total.toLocaleString()} titles found`
+                : `A fresh selection from IMDb on every visit · page ${pageParam}`}
           </p>
         </div>
 

@@ -7,8 +7,8 @@
  *
  * OMDb can only do two things: search titles by a word in their name, and
  * return full details for one IMDb id. It has no "list everything" or
- * "most popular" endpoint, so the browse rows are built by searching a
- * rotating set of everyday words, newest years first.
+ * "most popular" endpoint, so the browse rows are built by searching everyday
+ * words in an order drawn afresh on every visit, newest years first.
  *
  * The free key allows 1,000 requests a day, shared by every visitor, so
  * answers are cached in the browser. Set `VITE_OMDB_API_KEY` to use your own.
@@ -241,15 +241,30 @@ async function searchPage(
 
 /** Everyday words that appear in many titles. They only steer the search. */
 const SEED_WORDS = [
-  "love", "night", "world", "man", "life", "last", "day", "war",
-  "girl", "dark", "king", "star", "home", "time", "city", "blood",
+  "love", "night", "world", "man", "life", "last", "day", "war", "girl", "dark",
+  "king", "star", "home", "time", "city", "blood", "dead", "house", "black", "red",
+  "story", "secret", "lost", "game", "summer", "road", "fire", "heart", "dream", "moon",
+  "sun", "sea", "river", "island", "ghost", "angel", "devil", "queen", "prince", "hero",
+  "woman", "boy", "family", "father", "mother", "brother", "sister", "friend", "child", "wife",
+  "school", "street", "town", "land", "mountain", "sky", "ocean", "winter", "christmas", "wedding",
+  "murder", "killer", "crime", "police", "mystery", "detective", "escape", "hunt", "revenge", "justice",
+  "dragon", "monster", "zombie", "alien", "space", "future", "legend", "magic", "curse", "shadow",
+  "white", "blue", "gold", "wild", "big", "little", "new", "first", "final", "return",
+  "money", "power", "dance", "music", "song", "party", "show", "team", "race", "fight",
+  "journey", "paradise", "kingdom", "empire", "soldier", "battle", "storm", "ice", "desert", "forest",
+  "doctor", "agent", "spy", "hotel", "train", "ship", "bridge", "garden", "kiss", "truth",
 ];
 
 /** Words that, in a title, almost always mean Japanese animation. */
 const ANIME_WORDS = [
-  "isekai", "monogatari", "tensei", "senpai", "maou", "shoujo",
-  "sensei", "yuusha", "gakuen", "densetsu", "ninja", "samurai",
+  "isekai", "monogatari", "tensei", "senpai", "maou", "shoujo", "sensei", "yuusha",
+  "gakuen", "densetsu", "ninja", "samurai", "shonen", "mahou", "yokai", "shinobi",
+  "gundam", "pokemon", "digimon", "naruto", "dragon ball", "one piece", "sailor moon",
+  "evangelion", "kaiju", "yu-gi-oh", "doraemon", "precure", "kamen", "sword art",
+  "kimi", "boku", "watashi", "ore", "hime", "tenshi", "akuma", "sekai", "koi", "yume",
 ];
+
+const OLDEST_YEAR = 1950;
 
 interface FeedStep {
   term: string;
@@ -258,8 +273,13 @@ interface FeedStep {
 }
 
 interface Feed {
-  steps: FeedStep[];
+  /** Search words in an order drawn afresh on every visit. */
+  words: string[];
+  years: (number | undefined)[];
   next: number;
+  /** Word and year pairs with no further result pages. */
+  drained: Set<string>;
+  exhausted: boolean;
   shows: CatalogShow[];
   seen: Set<number>;
   queue: Promise<void>;
@@ -269,9 +289,7 @@ interface FeedSpec {
   key: string;
   type?: OmdbType;
   words: string[];
-  wordOffset?: number;
   years?: number[];
-  pagesPerTerm: number;
   overrides?: Overrides;
 }
 
@@ -280,43 +298,94 @@ const feeds = new Map<string, Feed>();
 /** Searches issued together per round; their results are interleaved. */
 const FEED_BATCH = 3;
 
-function recentYears(count: number): number[] {
+function yearsBack(count: number): number[] {
   const thisYear = new Date().getFullYear();
   return Array.from({ length: count }, (_, i) => thisYear - i);
 }
 
-function planSteps(spec: FeedSpec): FeedStep[] {
-  const offset = spec.wordOffset ?? 0;
-  const words = spec.words.map((_, i) => spec.words[(i + offset) % spec.words.length]);
-  const years: (number | undefined)[] = spec.years ?? [undefined];
+function allYears(): number[] {
+  return yearsBack(new Date().getFullYear() - OLDEST_YEAR + 1);
+}
 
-  const steps: FeedStep[] = [];
-  for (const year of years) {
-    for (let page = 1; page <= spec.pagesPerTerm; page++) {
-      for (const term of words) steps.push({ term, year, page });
-    }
+function shuffled<T>(list: readonly T[]): T[] {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
   }
-  return steps;
+  return out;
+}
+
+/**
+ * The n-th search of a feed. Every word is tried against every year, newest
+ * years first, and only then does the feed move on to the next result page,
+ * so it keeps producing titles for as long as OMDb has any.
+ */
+function stepAt(feed: Feed, n: number): FeedStep | null {
+  const wordIndex = n % feed.words.length;
+  const cycle = Math.floor(n / feed.words.length);
+  const page = Math.floor(cycle / feed.years.length) + 1;
+  if (page > OMDB_MAX_PAGE) return null;
+  // Neighbouring words look at neighbouring years, so one round spans a few.
+  const year = feed.years[(cycle + (wordIndex % FEED_BATCH)) % feed.years.length];
+  return { term: feed.words[wordIndex], year, page };
+}
+
+function drainKey(step: FeedStep): string {
+  return `${step.term}|${step.year ?? ""}`;
+}
+
+function nextBatch(feed: Feed): FeedStep[] {
+  const batch: FeedStep[] = [];
+  while (batch.length < FEED_BATCH) {
+    const step = stepAt(feed, feed.next);
+    if (!step) {
+      feed.exhausted = true;
+      break;
+    }
+    feed.next++;
+    if (!feed.drained.has(drainKey(step))) batch.push(step);
+  }
+  return batch;
 }
 
 async function loadFeed(spec: FeedSpec, wanted: number): Promise<Feed> {
   let feed = feeds.get(spec.key);
   if (!feed) {
-    feed = { steps: planSteps(spec), next: 0, shows: [], seen: new Set(), queue: Promise.resolve() };
+    feed = {
+      words: shuffled(spec.words),
+      years: spec.years ?? [undefined],
+      next: 0,
+      drained: new Set(),
+      exhausted: false,
+      shows: [],
+      seen: new Set(),
+      queue: Promise.resolve(),
+    };
     feeds.set(spec.key, feed);
   }
   const target = feed;
 
   // Chain onto the feed's queue so concurrent callers never repeat a request.
   const run = target.queue.then(async () => {
-    while (target.shows.length < wanted && target.next < target.steps.length) {
+    // Bound the work of one call: empty answers must not drain the daily quota.
+    let rounds = Math.ceil(Math.max(wanted - target.shows.length, 0) / OMDB_PAGE_SIZE) + 8;
+
+    while (target.shows.length < wanted && !target.exhausted && rounds-- > 0) {
       // Take a few search words at once and deal their results out in turn,
       // so a row is not ten titles that all share one word.
-      const batch = target.steps.slice(target.next, target.next + FEED_BATCH);
+      const batch = nextBatch(target);
+      if (batch.length === 0) break;
+
       const results = await Promise.all(
         batch.map((step) => searchPage(step.term, step.page, spec.type, step.year)),
       );
-      target.next += batch.length;
+      results.forEach((result, i) => {
+        const step = batch[i];
+        if (result.items.length < OMDB_PAGE_SIZE || result.total <= step.page * OMDB_PAGE_SIZE) {
+          target.drained.add(drainKey(step));
+        }
+      });
 
       const longest = Math.max(...results.map((r) => r.items.length));
       for (let i = 0; i < longest; i++) {
@@ -339,22 +408,17 @@ async function loadFeed(spec: FeedSpec, wanted: number): Promise<Feed> {
 
 function feedFor(type: ShowType | null | undefined): FeedSpec {
   if (type === "anime") {
-    return { key: "anime", words: ANIME_WORDS, pagesPerTerm: 3, overrides: { type: "anime" } };
+    return { key: "anime", type: "series", words: ANIME_WORDS, overrides: { type: "anime" } };
   }
-  if (type === "movie") {
-    return { key: "movie", type: "movie", words: SEED_WORDS, wordOffset: 4, years: recentYears(12), pagesPerTerm: 2 };
-  }
-  if (type === "tv") {
-    return { key: "tv", type: "series", words: SEED_WORDS, wordOffset: 8, years: recentYears(12), pagesPerTerm: 2 };
-  }
-  return { key: "all", words: SEED_WORDS, wordOffset: 12, years: recentYears(12), pagesPerTerm: 2 };
+  if (type === "movie") return { key: "movie", type: "movie", words: SEED_WORDS, years: allYears() };
+  if (type === "tv") return { key: "tv", type: "series", words: SEED_WORDS, years: allYears() };
+  return { key: "all", words: SEED_WORDS, years: allYears() };
 }
 
 const TRENDING_FEED: FeedSpec = {
   key: "trending",
   words: SEED_WORDS,
-  years: recentYears(2),
-  pagesPerTerm: 1,
+  years: yearsBack(2),
   overrides: { trending: true },
 };
 
@@ -405,9 +469,8 @@ export async function browse(query: BrowseQuery): Promise<BrowseResult> {
   }
 
   const feed = await loadFeed(feedFor(type), start + limit);
-  const exhausted = feed.next >= feed.steps.length;
-  // The true size is unknown; always advertise one more page until the feed runs dry.
-  const total = exhausted ? feed.shows.length : Math.max(feed.shows.length, start + limit) + limit;
+  // The feed has no known end; advertise one more page for as long as it keeps producing.
+  const total = feed.exhausted ? feed.shows.length : Math.max(feed.shows.length, start + limit) + limit;
 
   return { shows: feed.shows.slice(start, start + limit), total, page, limit };
 }
