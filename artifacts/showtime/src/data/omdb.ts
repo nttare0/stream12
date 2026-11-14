@@ -260,8 +260,8 @@ const ANIME_WORDS = [
   "isekai", "monogatari", "tensei", "senpai", "maou", "shoujo", "sensei", "yuusha",
   "gakuen", "densetsu", "ninja", "samurai", "shonen", "mahou", "yokai", "shinobi",
   "gundam", "pokemon", "digimon", "naruto", "dragon ball", "one piece", "sailor moon",
-  "evangelion", "kaiju", "yu-gi-oh", "doraemon", "precure", "kamen", "sword art",
-  "kimi", "boku", "watashi", "ore", "hime", "tenshi", "akuma", "sekai", "koi", "yume",
+  "evangelion", "kaiju", "yu-gi-oh", "doraemon", "precure", "sword art", "gintama",
+  "detective conan", "fullmetal", "jojo", "inuyasha", "lupin", "fairy tail", "haikyu",
 ];
 
 const OLDEST_YEAR = 1950;
@@ -377,8 +377,17 @@ async function loadFeed(spec: FeedSpec, wanted: number): Promise<Feed> {
       const batch = nextBatch(target);
       if (batch.length === 0) break;
 
-      const results = await Promise.all(
+      // One failed search must not sink the page; only give up when all of them fail.
+      const settled = await Promise.allSettled(
         batch.map((step) => searchPage(step.term, step.page, spec.type, step.year)),
+      );
+      const failure = settled.find((r) => r.status === "rejected");
+      if (failure && settled.every((r) => r.status === "rejected")) {
+        if (target.shows.length === 0) throw (failure as PromiseRejectedResult).reason;
+        break;
+      }
+      const results = settled.map((r) =>
+        r.status === "fulfilled" ? r.value : { items: [] as OmdbSearchItem[], total: Infinity },
       );
       results.forEach((result, i) => {
         const step = batch[i];
