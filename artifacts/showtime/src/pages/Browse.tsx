@@ -9,6 +9,18 @@ import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
+/** Page numbers to show: first, last and a window around the current page; null marks a gap. */
+function pageWindow(current: number, total: number): (number | null)[] {
+  const wanted = new Set([1, total, current - 1, current, current + 1]);
+  const pages = [...wanted].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+  const out: (number | null)[] = [];
+  pages.forEach((p, i) => {
+    if (i > 0 && p - pages[i - 1] > 1) out.push(null);
+    out.push(p);
+  });
+  return out;
+}
+
 export function Browse() {
   const [, setLocation] = useLocation();
   const searchStr = useSearch();
@@ -75,7 +87,7 @@ export function Browse() {
             {qParam ? `Results for "${qParam}"` : "Browse Shows"}
           </h1>
           <p className="text-white/40 text-sm">
-            {showsData ? `${showsData.total} titles found` : "Discovering..."}
+            {showsData ? `${showsData.total.toLocaleString()} titles found` : "Discovering..."}
           </p>
         </div>
 
@@ -136,7 +148,7 @@ export function Browse() {
                       )}
                     >
                       {g.name}
-                      <span className="ml-1 opacity-50">{g.showCount}</span>
+                      {g.showCount > 0 && <span className="ml-1 opacity-50">{g.showCount}</span>}
                     </button>
                   ))}
                 </div>
@@ -180,20 +192,24 @@ export function Browse() {
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={cn(
-                          "w-9 h-9 rounded-lg border text-sm font-medium transition-all",
-                          p === pageParam
-                            ? "bg-primary border-primary text-black font-bold"
-                            : "bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
-                        )}
-                      >
-                        {p}
-                      </button>
-                    ))}
+                    {pageWindow(pageParam, totalPages).map((p, i) =>
+                      p === null ? (
+                        <span key={`gap-${i}`} className="w-6 text-center text-white/30 text-sm">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={cn(
+                            "w-9 h-9 rounded-lg border text-sm font-medium transition-all",
+                            p === pageParam
+                              ? "bg-primary border-primary text-black font-bold"
+                              : "bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10"
+                          )}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
                     <button
                       onClick={() => setPage(pageParam + 1)}
                       disabled={pageParam >= totalPages}

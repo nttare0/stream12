@@ -1,9 +1,9 @@
 /**
- * In-code catalog.
+ * Bundled fallback catalog.
  *
- * The show data ships with the app bundle — there is no API server and no
- * database. Records were derived from IMDb data via OMDB and are served
- * entirely client-side by `local-api.ts`.
+ * The app's data comes live from IMDb (see `imdb.ts`). This small snapshot
+ * ships in the bundle only so the site still has something to show when the
+ * IMDb API cannot be reached. It also defines the show shape the UI uses.
  */
 import raw from "./catalog.json";
 
